@@ -1,0 +1,10 @@
+diffusers~=0.29.2
+transformers
+accelerate
+pydub~=0.25.1
+torch~=2.3.1
+numpy~=1.26.4
+torchaudio~=2.3.1
+pillow~=10.4.0
+scipy
+ipython
