@@ -1,35 +1,33 @@
-import torch
-from diffusers import StableDiffusionPipeline
-
-import numpy as np
-from PIL import Image
-import pydub
-from scipy.io import wavfile
-import torch
-import torchaudio
 import io
 import typing as T
+
+import numpy as np
+import pydub
+import torch
+import torchaudio
+from PIL import Image
 from pydub import AudioSegment
-from IPython.display import Audio, display
+from scipy.io import wavfile
+import tempfile
 
-def get_music(pipe, prompt, musicAI_indx, duration):
+from .log import get_logger
+log = get_logger(__name__)
+
+
+def get_music(pipe, prompt: str, duration: int):
     mp3file_name = "audio.mp3"
-    wavfile_name = "audio.wav"
-    if musicAI_indx == 0:
-        if duration == 5:
-            width_duration = 512
-        else:
-            width_duration = 512 + ((int(duration) - 5) * 128)
-        spec = pipe(prompt, height=512, width=width_duration).images[0]
-        print(spec)
-        wav = wav_bytes_from_spectrogram_image(spec)
-        with open(wavfile_name, "wb") as f:
-            f.write(wav[0].getbuffer())
+    width_duration = 512 + (duration - 5) * 128
+    log.info("Generating spectrogram of width {}".format(width_duration))
+    spec = pipe(prompt, height=512, width=width_duration).images[0]
+    log.info("Converting to WAV file")
+    wav = wav_bytes_from_spectrogram_image(spec)
+    with tempfile.NamedTemporaryFile('wb') as f:
+        f.write(wav[0].getbuffer())
+        wav_file = AudioSegment.from_wav(f.name)
+    log.info("Saving MP3")
+    wav_file.export(mp3file_name, format="mp3")
 
-        # Convert to mp3, for video merging function
-        wavfile = AudioSegment.from_wav(wavfile_name)
-        wavfile.export(mp3file_name, format="mp3")
-        return spec, mp3file_name
+    return spec, mp3file_name
 
 
 def wav_bytes_from_spectrogram_image(image: Image.Image) -> T.Tuple[io.BytesIO, float]:
@@ -136,7 +134,6 @@ def waveform_from_spectrogram(
             n_stft=n_fft // 2 + 1,
             norm=None,
             mel_scale="htk",
-            max_iter=max_mel_iters,
         ).to(device)
 
         Sxx_torch = mel_inv_scaler(Sxx_torch)
